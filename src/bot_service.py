@@ -26,7 +26,7 @@ class BotService:
         """Initialize service state for a team code."""
         self._team_code = team_code
         self._play_by_play_logging_enabled = self._get_env_bool(
-            "PLAY_BY_PLAY_LOGGING", default=True
+            "PLAY_BY_PLAY_LOGGING", default=False
         )
         self._team_game_uuids: set[str] = set()
         self._team_game_start_times: dict[str, str] = {}
