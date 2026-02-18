@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-hockey-bot
+  labels:
+    app: discord-hockey-bot
+spec:
+  replicas: 1
+  strategy:
+    # Becuase of uncertainties around whether two instances can run at the same time, we use Recreate
+    type: Recreate
+  selector:
+    matchLabels:
+      app: discord-hockey-bot
+  template:
+    metadata:
+      labels:
+        app: discord-hockey-bot
+    spec:
+      containers:
+      - name: discord-hockey-bot
+        image: ghcr.io/olofhaglund/discord-hockey-bot:latest
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+        - name: DISCORD_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: discord-hockey-bot-token
+              key: token
