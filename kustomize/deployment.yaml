@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: discord-hockey-bot
-        image: ghcr.io/olofhaglund/discord-hockey-bot:latest
+        image: ghcr.io/olofhaglund/discord-hockey-bot:v0.0.1
         resources:
           limits:
             memory: "256Mi"
