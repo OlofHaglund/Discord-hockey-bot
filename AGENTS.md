@@ -1,14 +1,28 @@
 # Discord Hockey Bot
 
-**Current file:** `~/Documents/Discord-hockey-bot/AGENTS.md`
-**Rota Project Folder:** `~/Documents/PKMS/00 - Rota/Projects/Discord Hockey`
+## Project Summary
 
-This project is tracked in the Rota folder above.
+Discord bot that posts updates about ice hockey games.
+
+## Default Role
+
+Use the Developer role for coding and maintenance tasks.
+
+## Working Guidelines
+
+- Keep changes small and reversible.
+- Match existing coding conventions and file layout.
+- Prefer configuration-driven behavior for teams, leagues, and schedules.
+- Log external API errors with enough detail to debug.
+- Avoid leaking secrets or tokens in logs or docs.
+- Keep `README.md` and this file aligned with current setup and workflow.
 
 ## Testing
-When asked to test or run the bot, rebuild the container first (`./podman.sh build`), then run it with Podman (e.g., `./podman.sh run`) rather than running the Python file directly.
 
-Use the Developer Role by reading `~/Documents/PKMS/00 - Rota/Roles/Developer.md`.
+- When asked to test or run the bot, rebuild the container first: `./podman.sh build`.
+- Run with Podman (for example `./podman.sh run`) instead of running the Python file directly.
 
-SHL API Calls are documented here: ~/Documents/Discord-hockey-bot/SHL-apis.md
-Game Data APIs are documented here: ~/Documents/Discord-hockey-bot/game-data-apis.md
+## References
+
+- `SHL-apis.md`
+- `game-data-apis.md`
