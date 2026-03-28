@@ -65,3 +65,18 @@ podman run --rm --env-file .env discord-hockey-bot
 
 `TEAM_CODES` in `src/bot.py` can include multiple team codes to run multiple polling services at once.
 All services share the same Discord token, so each will post announcements into the same configured channel.
+
+## Deploying to Kubernetes
+
+To deploy a new version to the Kubernetes cluster:
+
+1) Increase the version in the `kustomize` deployment file.
+2) Create a Git tag with the exact same version.
+3) Push the tag to origin.
+
+Example (replace `v1.2.3` with your version):
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```

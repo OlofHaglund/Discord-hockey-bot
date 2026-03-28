@@ -363,10 +363,9 @@ class BotService:
             return
         matchup = self._find_latest_matchup(events)
         self._start_announced_uuids.add(game_uuid)
-        if matchup:
-            await channel.send(f"Game started: {matchup}")
-        else:
-            await channel.send("Game started!")
+        description = "Game started!"
+        embed = self._build_announcement_embed(matchup, description)
+        await channel.send(embed=embed)
 
     async def _maybe_announce_event(self, game_uuid: str, event: dict) -> None:
         """Route an event to the proper announcement handler."""
@@ -383,32 +382,34 @@ class BotService:
         channel = await self._get_announce_channel()
         if channel is None:
             return
-        team_code = self._event_team_code(event)
+        team_name = self._event_team_name(event) or self._event_team_code(event)
         time = event.get("time")
         period = event.get("period")
         home_goals = event.get("homeGoals")
         away_goals = event.get("awayGoals")
         score = self._format_score(home_goals, away_goals)
         matchup = self._find_matchup_from_event(event)
-        message = "Goal"
-        message = self._append_event_details(message, team_code, period, time, score, matchup)
-        await channel.send(message)
+        details = self._collect_event_details(team_name, period, time, score)
+        description = self._format_event_description("Goal", details)
+        embed = self._build_announcement_embed(matchup, description)
+        await channel.send(embed=embed)
 
     async def _announce_penalty(self, game_uuid: str, event: dict) -> None:
         """Announce a penalty event."""
         channel = await self._get_announce_channel()
         if channel is None:
             return
-        team_code = self._event_team_code(event)
+        team_name = self._event_team_name(event) or self._event_team_code(event)
         time = event.get("time")
         period = event.get("period")
         offence = self._expand_offence(event.get("offence"))
         matchup = self._find_matchup_from_event(event)
-        message = "Penalty"
-        message = self._append_event_details(message, team_code, period, time, None, matchup)
+        details = self._collect_event_details(team_name, period, time, None)
         if offence:
-            message += f" - {offence}"
-        await channel.send(message)
+            details.append(("Offence", offence))
+        description = self._format_event_description("Penalty", details)
+        embed = self._build_announcement_embed(matchup, description)
+        await channel.send(embed=embed)
 
     async def _announce_period_break(self, game_uuid: str, event: dict) -> None:
         """Announce the end of a period."""
@@ -417,12 +418,12 @@ class BotService:
             return
         period = event.get("period")
         matchup = self._find_matchup_from_event(event)
-        message = "Period break"
-        if matchup:
-            message += f" - {matchup}"
+        details: list[tuple[str, str]] = []
         if period is not None:
-            message += f" - End of period {period}"
-        await channel.send(message)
+            details.append(("Period", str(period)))
+        description = self._format_event_description("Period break", details)
+        embed = self._build_announcement_embed(matchup, description)
+        await channel.send(embed=embed)
 
     async def _announce_game_over(self, game_uuid: str, events: list[dict]) -> None:
         """Announce final score when the game ends."""
@@ -432,14 +433,14 @@ class BotService:
         if channel is None:
             return
         final_score = self._find_latest_score(events)
-        teams = self._find_latest_team_codes(events)
-        message = "Match over"
-        if teams and final_score:
-            message += f" - {teams[0]} {final_score} {teams[1]}"
-        elif final_score:
-            message += f" - Final score {final_score}"
+        matchup = self._find_latest_matchup(events)
+        details: list[tuple[str, str]] = []
+        if final_score:
+            details.append(("Final score", final_score))
+        description = self._format_event_description("Match over", details)
         self._game_over_announced_uuids.add(game_uuid)
-        await channel.send(message)
+        embed = self._build_announcement_embed(matchup, description)
+        await channel.send(embed=embed)
 
     async def _get_announce_channel(self):
         """Return the configured Discord channel if available."""
@@ -458,36 +459,47 @@ class BotService:
                 return team_code
         return None
 
+    def _event_team_name(self, event: dict) -> str | None:
+        """Extract the full team name from an event."""
+        event_team = event.get("eventTeam")
+        if isinstance(event_team, dict):
+            team_name = event_team.get("teamName")
+            if isinstance(team_name, str):
+                return team_name
+        return None
+
     def _format_score(self, home_goals: int | None, away_goals: int | None) -> str | None:
         """Format a score string if both sides are present."""
         if isinstance(home_goals, int) and isinstance(away_goals, int):
             return f"{home_goals}-{away_goals}"
         return None
 
-    def _append_event_details(
+    def _collect_event_details(
         self,
-        message: str,
-        team_code: str | None,
+        team_name: str | None,
         period: int | None,
         time: str | None,
         score: str | None,
-        matchup: str | None,
-    ) -> str:
-        """Append details to a message, using a consistent format."""
-        parts: list[str] = []
-        if matchup:
-            parts.append(matchup)
-        if team_code:
-            parts.append(team_code)
+    ) -> list[tuple[str, str]]:
+        """Collect ordered event details for embed descriptions."""
+        details: list[tuple[str, str]] = []
+        if team_name:
+            details.append(("Team", team_name))
         if period is not None:
-            parts.append(f"P{period}")
+            details.append(("Period", str(period)))
         if time:
-            parts.append(time)
+            details.append(("Time", time))
         if score:
-            parts.append(score)
-        if parts:
-            message += f" - {' | '.join(parts)}"
-        return message
+            details.append(("Score", score))
+        return details
+
+    def _format_event_description(
+        self, event_label: str, details: list[tuple[str, str]]
+    ) -> str:
+        """Build a readable embed description from event details."""
+        lines = [event_label]
+        lines.extend(f"{key}: {value}" for key, value in details)
+        return "\n".join(lines)
 
     def _find_latest_score(self, events: list[dict]) -> str | None:
         """Return the most recent score found in events."""
@@ -497,27 +509,15 @@ class BotService:
                 return score
         return None
 
-    def _find_latest_team_codes(self, events: list[dict]) -> tuple[str, str] | None:
-        """Return the most recent home/away team codes from events."""
-        for event in events:
-            home_team = event.get("homeTeam")
-            away_team = event.get("awayTeam")
-            if isinstance(home_team, dict) and isinstance(away_team, dict):
-                home_code = home_team.get("teamCode")
-                away_code = away_team.get("teamCode")
-                if isinstance(home_code, str) and isinstance(away_code, str):
-                    return home_code, away_code
-        return None
-
     def _find_matchup_from_event(self, event: dict) -> str | None:
         """Return a matchup string from a single event."""
         home_team = event.get("homeTeam")
         away_team = event.get("awayTeam")
         if isinstance(home_team, dict) and isinstance(away_team, dict):
-            home_code = home_team.get("teamCode")
-            away_code = away_team.get("teamCode")
-            if isinstance(home_code, str) and isinstance(away_code, str):
-                return f"{home_code} vs {away_code}"
+            home_name = home_team.get("teamName")
+            away_name = away_team.get("teamName")
+            if isinstance(home_name, str) and isinstance(away_name, str):
+                return f"{home_name} vs {away_name}"
         return None
 
     def _find_latest_matchup(self, events: list[dict]) -> str | None:
@@ -527,6 +527,13 @@ class BotService:
             if matchup:
                 return matchup
         return None
+
+    def _build_announcement_embed(
+        self, title: str | None, description: str
+    ) -> discord.Embed:
+        """Create a consistent embed for all game announcements."""
+        embed_title = title or "SHL Update"
+        return discord.Embed(title=embed_title, description=description)
 
     def _expand_offence(self, offence: str | None) -> str | None:
         """Expand an offence code to a readable label."""

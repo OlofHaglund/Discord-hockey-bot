@@ -2,7 +2,6 @@ FROM python:3.11-slim
 
 LABEL Maintainer="Olof Haglund"
 
-
 WORKDIR /app
 
 COPY requirements.txt ./
